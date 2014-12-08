@@ -1,0 +1,93 @@
+<?
+	require_once('leveldef.inc.php');
+	require_once('tree.inc.php');
+
+	class LandscapeBuilder {		private $field;
+		private $width;
+		private $height;
+		public function LandscapeBuilder($width, $height) {			$this->field = '';
+			$this->width = $width;
+			$this->height = $height;
+			for ($y = 0; $y < $height; ++$y)
+			{
+				for ($x = 0; $x < $width; ++$x)
+				{
+					$this->field .= str_repeat('0', FIELD_CHAR_PER_CELL);
+				}
+				$this->field .= "\n";
+			}
+			//print_r($this->field);
+			//die();
+		}
+
+		private function fillColumn($x, $y, $topbrick, $brick)
+		{			LevelTextUtil::setBrick($this->field, $x, $y, $topbrick);
+			$y++;
+			for (; $y < $this->height; ++$y)
+			{
+				LevelTextUtil::setBrick($this->field, $x, $y, $brick);
+			}
+		}
+
+		private function generateTree($x, $y) {			$treeShouldBeHere = rand(0, 5) < 1;
+			if ($y < 5 || $x < 5 || $x >= FIELD_WIDTH - 5 || !$treeShouldBeHere) {				return;			}
+			$height = rand(1, $y - 1);
+			TreeGenerator::Generate($this->field, $height, $x, $y);
+		}
+
+		private function fillRange($x1, $y1, $x2, $y2, $topbrick, $brick)
+		{			$dx = $x2 - $x1 + 1;
+			$stepY = ($y2 - $y1)/$dx;
+			$y = $y1;
+			for ($x = $x1; $x < $x2; ++$x)
+			{				$y = $y + $stepY;
+				$inty = round($y);
+				$this->fillColumn($x, $inty, $topbrick, $brick);
+
+				if ($topbrick == B_GROUNDGRASS) {					$this->generateTree($x, $inty - 1);				}
+			}		}
+		private function buidRange($x1, $y1, $x2, $y2, $topbrick, $brick)
+		{			//echo "$y1 - $y2<br/>";			if (abs($x2 - $x1) < BUILDER_MIN_W)
+			{				//echo "Exit<br/>";				// We are done, remaining range is too small, fill it
+				$this->fillRange($x1, $y1, $x2, $y2, $topbrick, $brick);				return;			}
+			$x_center = round(($x2 - $x1)/2) + $x1;
+
+			$xdiff = abs($x2 - $x1);
+			$midheight = $xdiff*(rand(-1, 1))/4;
+			///echo "$midheight<br/>";
+			$y_center = ($y1 + $y2)/2 + $midheight;
+
+			// Correct possible out of range
+			if ($y_center < 0) $y_center = 0;
+			if ($y_center >= $this->height) $y_center = $this->height - 1;
+			//echo "y_center = $y_center<br/>";
+
+			//echo "Middles: [$x1, $x_center, $x2]";
+			$this->buidRange($x1, $y1, $x_center, $y_center, $topbrick, $brick);
+			$this->buidRange($x_center, $y_center, $x2, $y2, $topbrick, $brick);
+		}
+
+		public function Build()
+		{			//echo "<pre>";			$x1 = 0;
+			$x2 = $this->width;
+			$y1 = $this->height/2;
+			$y2 = $this->height/2;
+			$this->buidRange($x1, $y1, $x2, $y2, B_GROUNDGRASS, B_GROUND);
+
+
+			$y1 = $this->height/12*7;
+			$y2 = $y1;
+			$this->buidRange($x1, $y1, $x2, $y2, B_STONE, B_STONE);
+			//print_r($this->field);
+			return $this->field;
+
+			// Build some testing bricks
+			/*
+			for ($x = 0; $x < 14; ++$x)
+			{				for ($y = 0; $y < $this->m_field->GetHeight()/3; ++$y)
+				{					$this->m_field->Set($x, $y + 1, $x);
+				}
+			}
+			*/
+		}
+	}
